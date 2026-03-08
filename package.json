@@ -1,0 +1,63 @@
+{
+  "name": "jyotishbase",
+  "version": "1.0.0",
+  "description": "The data behind the astrological mind of HoraMind - an AI powered super astrologer.",
+  "main": "injest-santhanam.js",
+  "scripts": {
+    "setup": "npm install",
+    "injest": "node injest-scripts/injest-santhanam.mjs",
+    "query": "node sample-queries/query.mjs",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "Jyotish",
+    "Astrology",
+    "Vedic Astrology",
+    "Indian Astrology",
+    "Horoscope",
+    "Astrological Data",
+    "Astrological Charts",
+    "Astrological Calculations",
+    "Astrological Predictions",
+    "Astrological Analysis",
+    "Astrological Software",
+    "Astrological Tools",
+    "Astrological Resources",
+    "Astrological Knowledge Base",
+    "Astrological Database",
+    "Astrological API",
+    "Astrological Library",
+    "Astrological Framework",
+    "Astrological Engine",
+    "Astrological Model",
+    "Astrological System",
+    "Astrological Methodology",
+    "Astrological Techniques",
+    "Astrological Principles",
+    "Astrological Concepts",
+    "Astrological Terminology",
+    "Astrological Symbols",
+    "Astrological Glyphs",
+    "Astrological Signs",
+    "Astrological Houses",
+    "Astrological Aspects",
+    "Astrological Transits",
+    "Astrological Progressions",
+    "Astrological Directions"
+  ],
+  "author": "Harieshwar Jagan Abirami",
+  "license": "CC-BY-NC-4.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/HariEshwar-J-A/JyotishBase.git"
+  },
+  "bugs": {
+    "url": "https://github.com/HariEshwar-J-A/JyotishBase/issues"
+  },
+  "homepage": "https://github.com/HariEshwar-J-A/JyotishBase#readme",
+  "type": "module",
+  "dependencies": {
+    "@xenova/transformers": "^2.16.0",
+    "chromadb": "^1.8.1"
+  }
+}
