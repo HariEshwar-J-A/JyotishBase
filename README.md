@@ -1,5 +1,6 @@
 # JyotishBase
-*By Harieshwar Jagan Abirami*
+
+By [Harieshwar Jagan Abirami](https://github.com/HariEshwar-J-A)
 
 The data behind the astrological mind of HoraMind - an AI powered super astrologer. 
 
