@@ -5,9 +5,12 @@
   "main": "injest-santhanam.js",
   "scripts": {
     "setup": "npm install",
-    "injest": "node injest-scripts/injest-santhanam.mjs",
-    "query": "node sample-queries/query.mjs",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "injest": "node injest-scripts/injest-santhanam-v2.mjs",
+    "query": "node sample-queries/query-v2.mjs",
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "injest:dry": "node injest-scripts/injest-santhanam-v2.mjs --dry-run",
+    "audit": "node sample-queries/query-v2.mjs --audit",
+    "serve": "python serve_chroma.py"
   },
   "keywords": [
     "Jyotish",

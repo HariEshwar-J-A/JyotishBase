@@ -1,106 +1,38 @@
-import { ChromaClient } from "chromadb";
-import { pipeline } from "@xenova/transformers";
+/**
+ * DEPRECATED — use `query-v2.mjs`.
+ *
+ * Kept only so existing references fail loudly rather than silently. It does
+ * not run.
+ *
+ * -- Why it was retired ------------------------------------------------------
+ * It ran a substring entity tagger over the user's question and passed every
+ * hit into ChromaDB as a hard `where` filter -- it even logged "Applying strict
+ * metadata filter". Two measured consequences:
+ *
+ *   * "what happens on a Sunday" filtered the whole collection to planet_sun,
+ *     because includes("sun") matches Sunday. Same for misunderstandings,
+ *     sunrise, sunset, sunstrokes.
+ *   * "the 21st year" filtered to house_1, because includes("1st") matches
+ *     21st. That was 4 of 24 house_1 hits -- a 17% false rate on that tag.
+ *
+ * A hard filter built from a noisy tagger is worse than no filter: it deletes
+ * the correct answers and keeps the wrong ones. That is the mechanism behind
+ * the false positives originally reported.
+ *
+ * It also hardcoded a VM IP, so it worked on exactly one machine.
+ *
+ * query-v2.mjs uses word-boundary, bilingual entity extraction and lets
+ * metadata *rank* rather than exclude, so a tagging error can no longer remove
+ * a relevant passage.
+ */
 
-// 🔴 REPLACE THIS with your actual Ubuntu VM IP address
-const VM_IP_ADDRESS = "192.168.128.128";
-const client = new ChromaClient({ host: VM_IP_ADDRESS, port: 8000 });
+console.error(`
+query.mjs has been retired.
 
-// The exact same Entity Extractor to build our smart filters
-function extractTags(text) {
-  const tags = {};
-  const textLower = text.toLowerCase();
-  const planets = [
-    "sun",
-    "moon",
-    "mars",
-    "mercury",
-    "jupiter",
-    "venus",
-    "saturn",
-    "rahu",
-    "ketu",
-  ];
-  planets.forEach((p) => {
-    if (textLower.includes(p)) tags[`planet_${p}`] = true;
-  });
-  const houses = [
-    "1st",
-    "2nd",
-    "3rd",
-    "4th",
-    "5th",
-    "6th",
-    "7th",
-    "8th",
-    "9th",
-    "10th",
-    "11th",
-    "12th",
-    "ascendant",
-    "lagna",
-  ];
-  houses.forEach((h) => {
-    if (textLower.includes(h)) {
-      let houseNum = h.replace(/\D/g, "");
-      if (h === "ascendant" || h === "lagna") houseNum = "1";
-      if (houseNum) tags[`house_${houseNum}`] = true;
-    }
-  });
-  return tags;
-}
+  Use:  node sample-queries/query-v2.mjs "your question"
+        node sample-queries/query-v2.mjs --audit
 
-async function searchBPHS() {
-  console.log(`Connecting to database on ${VM_IP_ADDRESS}...`);
-  const generateEmbeddings = await pipeline(
-    "feature-extraction",
-    "Xenova/all-MiniLM-L6-v2",
-  );
-  const collection = await client.getCollection({
-    name: "santhanam_source_of_truth",
-  });
-
-  // The test question
-  const question = "What are the effects of Rahu in the 9th house?";
-  console.log(`\n🤔 Question: "${question}"`);
-
-  const output = await generateEmbeddings(question, {
-    pooling: "mean",
-    normalize: true,
-  });
-
-  // Extract tags to build our strict filter
-  const requiredTags = extractTags(question);
-  const filterKeys = Object.keys(requiredTags);
-
-  let whereClause = undefined;
-  if (filterKeys.length > 1) {
-    whereClause = { $and: filterKeys.map((key) => ({ [key]: true })) };
-  } else if (filterKeys.length === 1) {
-    whereClause = { [filterKeys[0]]: true };
-  }
-
-  console.log(
-    `🔍 Applying strict metadata filter:`,
-    JSON.stringify(whereClause),
-  );
-
-  const results = await collection.query({
-    queryEmbeddings: [Array.from(output.data)],
-    nResults: 3,
-    where: whereClause,
-  });
-
-  console.log("\n✨ Precision Matches:\n");
-  if (!results.documents[0] || results.documents[0].length === 0) {
-    console.log("No rules found matching those exact placements.");
-    return;
-  }
-
-  for (let i = 0; i < results.documents[0].length; i++) {
-    console.log(`Match ${i + 1} (Source: ${results.metadatas[0][i].file}):`);
-    console.log(results.documents[0][i]);
-    console.log("--------------------------------------------------\n");
-  }
-}
-
-searchBPHS();
+  Configure with CHROMA_HOST / CHROMA_PORT rather than editing the file.
+  See this file's header for why the old filtering produced false positives.
+`);
+process.exit(1);
