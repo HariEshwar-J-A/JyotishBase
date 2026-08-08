@@ -35,3 +35,5 @@ CLAUDE.md
 *.jpeg
 *.gif
 *.webp
+# Local Chroma server helper (generated)
+serve_chroma.py
