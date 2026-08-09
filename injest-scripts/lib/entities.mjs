@@ -77,13 +77,50 @@ export const HOUSES = {
     12: ['12th', 'twelfth house', 'vyaya bhava'],
 };
 
+/**
+ * Divisional charts, tagged by number.
+ *
+ * `topic_varga` alone cannot answer "what is the D2 rule", because BPHS uses
+ * "Hora" for two unrelated things: the D2 chart, and the planetary hour that
+ * feeds Hora Bala. Both mention Hora, both are varga-adjacent, and the wrong
+ * sense outranked the right one in testing. An LLM handed that top hit answers
+ * the D2 question with a strength rule, confidently.
+ *
+ * `exclude` lists context words that mean the *other* sense. When one is
+ * present the division tag is withheld, so a strength passage never claims to
+ * define a chart.
+ */
+export const DIVISIONS = {
+    1:  { names: ['rasi', 'raasi', 'rāśi', 'd-1', 'd1'] },
+    2:  { names: ['hora', 'horā'], exclude: ['bala', 'strength', 'planetary hour',
+                                             'week day', 'weekday', 'sunrise to sunrise',
+                                             '24 equal parts'] },
+    3:  { names: ['drekkana', 'dreshkan', 'decanate', 'drekkan', 'd-3', 'd3'] },
+    4:  { names: ['chaturthamsa', 'chaturthāńś', 'turyamsa', 'd-4', 'd4'] },
+    7:  { names: ['saptamsa', 'saptāńś', 'sapthamamsa', 'd-7', 'd7'] },
+    9:  { names: ['navamsa', 'navāńś', 'navamsha', 'd-9', 'd9'] },
+    10: { names: ['dasamsa', 'dashāńś', 'dasamamsa', 'd-10', 'd10'] },
+    12: { names: ['dvadasamsa', 'dwadasamsa', 'dvadashāńś', 'd-12', 'd12'] },
+    16: { names: ['shodasamsa', 'shodashāńś', 'kalamsa', 'd-16', 'd16'] },
+    20: { names: ['vimsamsa', 'vimshāńś', 'd-20', 'd20'] },
+    24: { names: ['siddhamsa', 'chaturvimsamsa', 'chaturvimshāńś', 'd-24', 'd24'] },
+    27: { names: ['bhamsa', 'nakshatramsa', 'saptavimsamsa', 'saptavimshāńś', 'd-27', 'd27'] },
+    30: { names: ['trimsamsa', 'trimshāńś', 'd-30', 'd30'] },
+    40: { names: ['khavedamsa', 'chatvarimsamsa', 'khavedāńś', 'd-40', 'd40'] },
+    45: { names: ['akshavedamsa', 'akshavedāńś', 'd-45', 'd45'] },
+    60: { names: ['shashtiamsa', 'shashtyamsa', 'shashtiāńś', 'd-60', 'd60'] },
+};
+
 /** Topic lexicon — what a passage is *about*, which is what users query. */
 export const TOPICS = {
     dasha:      ['dasa', 'dasha', 'antardasa', 'bhukti', 'vimsottari', 'vimshottari', 'mahadasa'],
     varga:      ['varga', 'navamsa', 'drekkana', 'hora', 'dasamsa', 'shashtiamsa', 'divisional'],
     yoga:       ['yoga', 'raja yoga', 'dhana yoga', 'combination'],
     aspect:     ['aspect', 'drishti', 'drsti'],
-    strength:   ['bala', 'shadbala', 'sthana bala', 'dig bala', 'strength'],
+    strength:   ['bala', 'shadbala', 'sthana bala', 'dig bala', 'kaala bala',
+                 'chesta bala', 'drik bala', 'naisargika', 'strength', 'rupas'],
+    muhurta:    ['planetary hour', 'week day', 'weekday', 'sunrise to sunrise',
+                 'hora lord', 'ghatika', 'muhurta'],
     longevity:  ['longevity', 'ayur', 'ayush', 'maraka', 'marana'],
     marriage:   ['marriage', 'wife', 'husband', 'spouse', 'kalatra'],
     children:   ['children', 'progeny', 'putra', 'santana'],
@@ -100,7 +137,9 @@ function termRegex(term) {
     const esc = term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     // \b does not behave for multi-word terms with spaces, so anchor on
     // non-word characters instead.
-    return new RegExp(`(?:^|[^a-z0-9])${esc}(?:[^a-z0-9]|$)`, 'i');
+    // A trailing plural "s" is allowed: the text pluralises freely
+    // ("the Dasamamsas are counted from..."), and those passages went untagged.
+    return new RegExp(`(?:^|[^a-z0-9])${esc}s?(?:[^a-z0-9]|$)`, 'i');
 }
 
 const compile = (lexicon) => {
@@ -110,6 +149,31 @@ const compile = (lexicon) => {
     }
     return out;
 };
+
+/** Divisions compile to {re[], excludeRe[]} rather than a flat regex list. */
+const DIVISION_RE = Object.fromEntries(
+    Object.entries(DIVISIONS).map(([n, d]) => [n, {
+        names:   d.names.map(termRegex),
+        exclude: (d.exclude || []).map(termRegex),
+    }]),
+);
+
+/**
+ * Divisions present in a passage.
+ *
+ * A name match is withheld when an exclusion term is also present, which is how
+ * "Hora Bala ... 24 equal parts ... ruled by the Lord of the week day" avoids
+ * claiming to define the D2 chart.
+ */
+function matchDivisions(text) {
+    const hits = [];
+    for (const [n, { names, exclude }] of Object.entries(DIVISION_RE)) {
+        if (!names.some(re => re.test(text))) continue;
+        if (exclude.length && exclude.some(re => re.test(text))) continue;
+        hits.push(Number(n));
+    }
+    return hits;
+}
 
 const PLANET_RE = compile(PLANETS);
 const SIGN_RE   = compile(SIGNS);
@@ -135,8 +199,10 @@ export function extractEntities(text) {
     const signs   = matchAll(text, SIGN_RE);
     const houses  = matchAll(text, HOUSE_RE);
     const topics  = matchAll(text, TOPIC_RE);
+    const divisions = matchDivisions(text);
 
     const flags = {};
+    for (const d of divisions) flags[`division_${d}`] = true;
     for (const p of planets) flags[`planet_${p}`] = true;
     for (const s of signs)   flags[`sign_${s}`]   = true;
     for (const h of houses)  flags[`house_${h}`]  = true;
@@ -149,7 +215,9 @@ export function extractEntities(text) {
             signs:   signs.join(',')   || '',
             houses:  houses.join(',')  || '',
             topics:  topics.join(',')  || '',
-            entity_count: planets.length + signs.length + houses.length + topics.length,
+            divisions: divisions.join(',') || '',
+            entity_count: planets.length + signs.length + houses.length
+                        + topics.length + divisions.length,
         },
     };
 }

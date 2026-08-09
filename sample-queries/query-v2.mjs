@@ -32,8 +32,17 @@ const COLLECTION = process.env.CHROMA_COLLECTION || 'santhanam_source_of_truth';
 const AUDIT = process.argv.includes('--audit');
 const QUERY = process.argv.slice(2).filter(a => !a.startsWith('--')).join(' ');
 
-/** Boost applied per matching entity flag. Tuned to reorder, not to dominate. */
-const ENTITY_BOOST = 0.06;
+/**
+ * Boost per matching metadata flag. Tuned to reorder, not to dominate.
+ *
+ * A division match is worth far more than a topic match. `topic_varga` is broad
+ * enough to cover both the D2 chart and the planetary hour behind Hora Bala,
+ * which is how a strength passage once outranked the actual D2 definition.
+ * `division_2` names the thing being asked about, so it earns a much larger
+ * weight than the generic topic.
+ */
+const ENTITY_BOOST   = 0.06;
+const DIVISION_BOOST = 0.25;
 
 function cite(m) {
     const ch = m.chapter > 0 ? `ch.${m.chapter}` : '';
@@ -56,8 +65,12 @@ async function search(collection, embed, question, k = 5) {
     const scored = res.ids[0].map((id, i) => {
         const meta = res.metadatas[0][i];
         const matched = wanted.filter(f => meta[f] === true);
-        // Chroma cosine distance: lower is better. Subtract the boost.
-        const score = res.distances[0][i] - matched.length * ENTITY_BOOST;
+        const divisionHits = matched.filter(f => f.startsWith('division_')).length;
+        const otherHits    = matched.length - divisionHits;
+        // Chroma cosine distance: lower is better. Subtract the boosts.
+        const score = res.distances[0][i]
+                    - divisionHits * DIVISION_BOOST
+                    - otherHits * ENTITY_BOOST;
         return { id, meta, doc: res.documents[0][i], dist: res.distances[0][i], matched, score };
     });
 
