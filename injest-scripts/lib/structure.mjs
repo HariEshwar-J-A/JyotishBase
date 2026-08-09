@@ -74,6 +74,16 @@ const NUMBERED_RE = /^#{1,4}\s*\.?\s*([0-9]{1,2})\.\s*(.+)$/;
 const VERSE_RE = /॥\s*([०-९0-9]+)\s*॥/;
 
 /**
+ * English verse opener: `5-6. Rāśi and Horā.` or `12. NAVAMSA:`.
+ *
+ * Born-digital sources such as BPHS.pdf carry no Devanagari at all, so the
+ * sloka spine has to come from the English numbering instead. Anchored to the
+ * line start and capped at three digits so page numbers and ordinary decimals
+ * in running prose do not masquerade as verses.
+ */
+const ENGLISH_VERSE_RE = /^(\d{1,3})(?:[-–]\d{1,3})?(?:½)?\.\s+\S/;
+
+/**
  * Split a markdown book into verse-anchored units.
  *
  * @param {string} markdown  file contents
@@ -146,6 +156,18 @@ export function buildUnits(markdown, sourceFile) {
         // ── Verse marker closes the current unit ────────────────────────────
         const verse = line.match(VERSE_RE);
         const devHeavy = devanagariRatio(line) > 0.25;
+
+        // English-numbered sources: a new verse number starts a new unit.
+        const engVerse = !devHeavy && line.match(ENGLISH_VERSE_RE);
+        if (engVerse) {
+            if (cur.english.length || cur.sanskrit.length) {
+                flush();
+                cur = start();
+            }
+            cur.verseNum = parseInt(engVerse[1], 10);
+            cur.english.push(line);
+            continue;
+        }
 
         if (devHeavy) {
             // A fresh sloka arriving after we already have a numbered verse and
